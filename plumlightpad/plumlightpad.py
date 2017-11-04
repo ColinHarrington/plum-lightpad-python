@@ -7,8 +7,9 @@ Published under the MIT license - See LICENSE file for more details.
 
 import time
 import hashlib
-import requests
-
+import threading
+import telnetlib
+import json
 import requests
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
@@ -20,10 +21,10 @@ class Plum:
     """Interact with Plum Lightpad devices"""
 
     def __init__(self, username, password):
-        print("")
         self.local_devices = plumdiscovery.discover()
         cloud_data = plumcloud.fetch_all_the_things(username, password)
         self.loads = self.__collate_logical_loads(cloud_data, self.local_devices)
+        self._subscribers = {}
 
     def get_logical_loads(self):
         return self.loads
@@ -114,3 +115,30 @@ class Plum:
                             collated_loads[load_id]["lightpads"][lpid]["port"] = devices[lpid]["port"]
 
         return collated_loads
+
+    def register_event_listener(self, lpid, callback):
+        """Listens for events from the lightpad"""
+
+        # loop through logic loads, looking for lpid
+        for llid in self.loads:
+            # loop through lightpads until we find it
+            if lpid in self.loads[llid]["lightpads"]:
+                lightpad = self.loads[llid]["lightpads"][lpid]
+                self._subscribers[lpid] = threading.Thread(target=self.__register_listener, args=(lightpad["ip"], callback))
+                self._subscribers[lpid].daemon = True
+                self._subscribers[lpid].start()
+
+    def __register_listener(self, ip, callback):
+        """creates a telnet connection to the lightpad"""
+
+        tn = telnetlib.Telnet(ip, 2708)
+        while True:
+            try:
+                raw_string = tn.read_until(b'.\n', 60)
+
+                if len(raw_string) >= 2 and raw_string[-2:] == b'.\n':
+                    # lightpad sends ".\n" at the end that we need to chop off
+                    json_string = raw_string.decode('ascii')[0:-2]
+                    callback(json.loads(json_string))
+            except:
+                pass
