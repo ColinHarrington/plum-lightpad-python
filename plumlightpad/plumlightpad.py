@@ -9,6 +9,10 @@ import time
 import hashlib
 import requests
 
+import requests
+from requests.packages.urllib3.exceptions import InsecureRequestWarning
+requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+
 from . import plumdiscovery
 from . import plumcloud
 
@@ -32,8 +36,27 @@ class Plum:
         """Turn off a logical load"""
         self.set_level(llid, 0)
 
+    def get_metrics(self, llid):
+        """Get the current level of the given logical load"""
+        if llid in self.loads:
+            # loop through lightpads until one works
+            for lpid in self.loads[llid]["lightpads"]:
+                try:
+                    lightpad = self.loads[llid]["lightpads"][lpid]
+                    url = url = "https://%s:%s/v2/getLogicalLoadMetrics" % (lightpad["ip"], lightpad["port"])
+                    data = {
+                        "llid": llid
+                    }
+                    response = self.__post(url, data, self.loads[llid]["token"])
+
+                    if response.status_code is 200:
+                        return response.json()
+
+                except IOError:
+                    print('error')
+
     def set_level(self, llid, level):
-        """Turn on a logical load"""
+        """Turn on a logical load to a specific level"""
 
         if llid in self.loads:
             # loop through lightpads until one works
