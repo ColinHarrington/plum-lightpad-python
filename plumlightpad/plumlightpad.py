@@ -12,7 +12,7 @@ import requests
 from . import plumdiscovery
 from . import plumcloud
 
-class PlumLightpad:
+class Plum:
     """Interact with Plum Lightpad devices"""
 
     def __init__(self, username, password):
@@ -20,6 +20,9 @@ class PlumLightpad:
         self.local_devices = plumdiscovery.discover()
         cloud_data = plumcloud.fetch_all_the_things(username, password)
         self.loads = self.__collate_logical_loads(cloud_data, self.local_devices)
+
+    def get_logical_loads(self):
+        return self.loads
 
     def turn_on(self, llid):
         """Turn on a logical load"""

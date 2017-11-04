@@ -1,2 +1,2 @@
 """Interact with plum lightpads"""
-from .plumlightpad import PlumLightpad
+from .plumlightpad import Plum
