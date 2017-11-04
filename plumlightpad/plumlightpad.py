@@ -1,50 +1,90 @@
 '''
 Plum Lightpad Python Library
-
-https://github.com/heathbar/plumlightpad
-
+https://github.com/heathbar/plum-lightpad-python
 
 Published under the MIT license - See LICENSE file for more details.
 '''
 
-from socket import socket,  timeout, AF_INET, SOCK_DGRAM, SOL_SOCKET, SO_REUSEADDR, SO_BROADCAST
-import threading
+import time
+import hashlib
 import requests
 
+import plumdiscovery
+import plumcloud
 
+class PlumLightpad:
+    """Interact with Plum Lightpad devices"""
 
-class PlumLightpad():
-    """Interact with Plum Lightpads"""
+    def __init__(self, username, password):
+        print("")
+        self.local_devices = plumdiscovery.discover()
+        cloud_data = plumcloud.fetch_all_the_things(username, password)
+        self.loads = self.__collate_logical_loads(cloud_data, self.local_devices)
 
-    def discover(self):
-        """Broadcast a query on the network to find all Plum Lightpads"""
+    def turn_on(self, llid):
+        """Turn on a logical load"""
+        self.set_level(llid, 255)
 
-        devices = {}
+    def turn_off(self, llid):
+        """Turn off a logical load"""
+        self.set_level(llid, 0)
 
-        for i in range(1, 3):
-            discovery_socket = socket(AF_INET, SOCK_DGRAM)
-            discovery_socket.bind(("", 50000))
-            discovery_socket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
-            discovery_socket.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
-            discovery_socket.sendto("PLUM".encode("UTF-8"), ("255.255.255.255", 43770))
-            discovery_socket.settimeout(5)
-            try:
-                while True:
-                    data, source_ip = discovery_socket.recvfrom(1024)
-                    info = data.decode("UTF-8").split(" ")
-                    lpid = info[2]
+    def set_level(self, llid, level):
+        """Turn on a logical load"""
 
-                    if lpid not in devices:
-                        lightpad = {}
-                        lightpad.update({"ip": source_ip[0]})
-                        lightpad.update({"port": info[3]})
-                        devices.update({lpid: lightpad})
-            except timeout:
-                pass
-            finally:
-                discovery_socket.close()
-        return devices
+        if llid in self.loads:
+            # loop through lightpads until one works
+            for lpid in self.loads[llid]["lightpads"]:
+                try:
+                    lightpad = self.loads[llid]["lightpads"][lpid]
+                    url = "https://%s:%s/v2/setLogicalLoadLevel" % (lightpad["ip"], lightpad["port"])
+                    data = {
+                        "level": level,
+                        "llid": llid
+                    }
+                    response = self.__post(url, data, self.loads[llid]["token"])
 
-x = PlumLightpad()
-devs = x.discover()
-print(devs)
+                    if response.status_code is 200:
+                        return
+
+                except IOError:
+                    print('error')
+
+    def __post(self, url, data, token):
+        headers = {
+            "User-Agent": "Plum/2.3.0 (iPhone; iOS 9.2.1; Scale/2.00)",
+            "X-Plum-House-Access-Token": token
+        }
+        return requests.post(url, headers=headers, json=data, verify=False)
+
+    def __collate_logical_loads(self, cloud_data, devices):
+        """Make a list of all logical loads from the cloud with only the lightpads found on the current network"""
+
+        collated_loads = {}
+        sha = hashlib.new("sha256")
+
+        for house_id in cloud_data:
+            rooms = cloud_data[house_id]["rooms"]
+
+            for room_id in rooms:
+                logical_loads = cloud_data[house_id]["rooms"][room_id]["logical_loads"]
+
+                for load_id in logical_loads:
+                    load = cloud_data[house_id]["rooms"][room_id]["logical_loads"][load_id]
+
+                    sha.update(cloud_data[house_id]["token"].encode())
+                    token = sha.hexdigest()
+
+                    collated_loads[load_id] = {
+                        "name": load["name"],
+                        "token": token,
+                        "lightpads": {}
+                    }
+
+                    for lpid in load["lightpads"]:
+                        if lpid in devices:
+                            collated_loads[load_id]["lightpads"][lpid] = load["lightpads"][lpid]
+                            collated_loads[load_id]["lightpads"][lpid]["ip"] = devices[lpid]["ip"]
+                            collated_loads[load_id]["lightpads"][lpid]["port"] = devices[lpid]["port"]
+
+        return collated_loads
