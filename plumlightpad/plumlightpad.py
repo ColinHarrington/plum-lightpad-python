@@ -9,8 +9,8 @@ import time
 import hashlib
 import requests
 
-import plumdiscovery
-import plumcloud
+from . import plumdiscovery
+from . import plumcloud
 
 class PlumLightpad:
     """Interact with Plum Lightpad devices"""
