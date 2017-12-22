@@ -130,6 +130,59 @@ class Plum:
         """Turn off a logical load"""
         self.set_logical_load_level(llid, 0)
 
+    def set_glow_color(self, lpid, r, g, b, w):
+        if lpid in self.lightpads:
+            try:
+                lightpad = self.lightpads[lpid]
+                llid = lightpad["logical_load_id"]
+
+                url = "https://%s:%s/v2/setLogicalLoadConfig" % (lightpad["ip"], lightpad["port"])
+                data = {
+                    "config": {
+                        "glowColor": {
+                            "red": r,
+                            "green": g,
+                            "blue": b,
+                            "white": w
+                        }
+                    },
+                    "llid": llid
+                }
+                response = self.__post(url, data, self.loads[llid]["token"])
+
+                if response.status_code is 200:
+                    return
+
+            except IOError:
+                print('error')
+    
+    def set_glow_timeout(self, lpid, timeout):
+        if lpid in self.lightpads and timeout >= 0:
+            try:
+                lightpad = self.lightpads[lpid]
+                llid = lightpad["logical_load_id"]
+
+                url = "https://%s:%s/v2/setLogicalLoadConfig" % (lightpad["ip"], lightpad["port"])
+                data = {
+                    "config": {
+                        "glowTimeout": timeout
+                    },
+                    "llid": llid
+                }
+                response = self.__post(url, data, self.loads[llid]["token"])
+
+                if response.status_code is 200:
+                    return
+
+            except IOError:
+                print('error')
+    
+    def enable_glow(self, lpid):
+        self.__enable_glow(lpid, True)
+    
+    def disable_glow(self, lpid):
+        self.__enable_glow(lpid, False)
+
     def register_event_listener(self, lpid, callback):
         """Listens for events from the lightpad"""
 
@@ -203,3 +256,25 @@ class Plum:
                             self.lightpads[lpid]["ip"] = devices[lpid]["ip"]
                             self.lightpads[lpid]["port"] = devices[lpid]["port"]
                             self.lightpads[lpid]["logical_load_id"] = load_id
+
+    def __enable_glow(self, lpid, enable):
+        if lpid in self.lightpads:
+            try:
+                lightpad = self.lightpads[lpid]
+                llid = lightpad["logical_load_id"]
+
+                url = "https://%s:%s/v2/setLogicalLoadConfig" % (lightpad["ip"], lightpad["port"])
+                data = {
+                    "config": {
+                        "glowEnabled": enable
+                    },
+                    "llid": llid
+                }
+                response = self.__post(url, data, self.loads[llid]["token"])
+
+                if response.status_code is 200:
+                    return
+
+            except IOError:
+                print('error')
+
