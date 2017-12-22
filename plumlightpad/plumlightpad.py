@@ -143,6 +143,7 @@ class Plum:
         """creates a telnet connection to the lightpad"""
 
         tn = telnetlib.Telnet(ip, 2708)
+        self._last_event = ""
         while True:
             try:
                 raw_string = tn.read_until(b'.\n', 60)
@@ -150,7 +151,11 @@ class Plum:
                 if len(raw_string) >= 2 and raw_string[-2:] == b'.\n':
                     # lightpad sends ".\n" at the end that we need to chop off
                     json_string = raw_string.decode('ascii')[0:-2]
-                    callback(json.loads(json_string))
+                    if json_string != self._last_event:
+                        callback(json.loads(json_string))
+
+                    self._last_event = json_string
+
             except:
                 pass
 
