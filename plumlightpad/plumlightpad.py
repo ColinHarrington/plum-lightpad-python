@@ -87,9 +87,6 @@ class Plum:
                 }
                 response = self.__post(url, data, self.loads[llid]["token"])
 
-                if response.status_code is 200:
-                    return
-
             except IOError:
                 print('error')
 
@@ -107,9 +104,6 @@ class Plum:
                         "llid": llid
                     }
                     response = self.__post(url, data, self.loads[llid]["token"])
-
-                    if response.status_code is 200:
-                        return
 
                 except IOError:
                     print('error')
@@ -150,9 +144,6 @@ class Plum:
                 }
                 response = self.__post(url, data, self.loads[llid]["token"])
 
-                if response.status_code is 200:
-                    return
-
             except IOError:
                 print('error')
     
@@ -171,9 +162,6 @@ class Plum:
                 }
                 response = self.__post(url, data, self.loads[llid]["token"])
 
-                if response.status_code is 200:
-                    return
-
             except IOError:
                 print('error')
 
@@ -191,9 +179,6 @@ class Plum:
                     "llid": llid
                 }
                 response = self.__post(url, data, self.loads[llid]["token"])
-
-                if response.status_code is 200:
-                    return
 
             except IOError:
                 print('error')
