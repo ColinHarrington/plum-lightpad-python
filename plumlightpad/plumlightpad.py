@@ -176,7 +176,28 @@ class Plum:
 
             except IOError:
                 print('error')
-    
+
+    def set_glow_intensity(self, lpid, intensity):
+        if lpid in self.lightpads and intensity >= 0:
+            try:
+                lightpad = self.lightpads[lpid]
+                llid = lightpad["logical_load_id"]
+
+                url = "https://%s:%s/v2/setLogicalLoadConfig" % (lightpad["ip"], lightpad["port"])
+                data = {
+                    "config": {
+                        "glowIntensity": (float(intensity)/float(100))
+                    },
+                    "llid": llid
+                }
+                response = self.__post(url, data, self.loads[llid]["token"])
+
+                if response.status_code is 200:
+                    return
+
+            except IOError:
+                print('error')
+
     def enable_glow(self, lpid):
         self.__enable_glow(lpid, True)
     
