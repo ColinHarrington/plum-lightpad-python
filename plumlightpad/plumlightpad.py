@@ -32,14 +32,6 @@ class Plum:
     def get_lightpads(self):
         return self.lightpads
 
-    def turn_on(self, llid):
-        """Turn on a logical load"""
-        self.set_level(llid, 255)
-
-    def turn_off(self, llid):
-        """Turn off a logical load"""
-        self.set_level(llid, 0)
-
     def get_lightpad_metrics(self, lpid):
         """Get the current metrics of the given lightpad"""
         if lpid in self.lightpads:
@@ -121,6 +113,22 @@ class Plum:
 
                 except IOError:
                     print('error')
+
+    def turn_lightpad_on(self, lpid):
+        """Turn on a lightpad"""
+        self.set_lightpad_level(lpid, 255)
+
+    def turn_logical_load_on(self, llid):
+        """Turn on a logical load"""
+        self.set_logical_load_level(llid, 255)
+
+    def turn_lightpad_off(self, lpid):
+        """Turn off a lightpad"""
+        self.set_lightpad_level(lpid, 0)
+
+    def turn_logical_load_off(self, llid):
+        """Turn off a logical load"""
+        self.set_logical_load_level(llid, 0)
 
     def register_event_listener(self, lpid, callback):
         """Listens for events from the lightpad"""
