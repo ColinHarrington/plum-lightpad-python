@@ -5,7 +5,6 @@ https://github.com/heathbar/plum-lightpad-python
 Published under the MIT license - See LICENSE file for more details.
 '''
 
-import time
 import hashlib
 import threading
 import telnetlib
@@ -227,12 +226,15 @@ class Plum:
 
     def __collate_discoveries(self, cloud_data, devices):
         """Make a list of all logical loads from the cloud with only the lightpads found on the current network"""
-
         self.loads = {}
+        self.lightpads = {}
         sha = hashlib.new("sha256")
 
         for house_id in cloud_data:
             rooms = cloud_data[house_id]["rooms"]
+
+            sha.update(cloud_data[house_id]["token"].encode())
+            token = sha.hexdigest()
 
             for room_id in rooms:
                 logical_loads = cloud_data[house_id]["rooms"][room_id]["logical_loads"]
@@ -240,16 +242,12 @@ class Plum:
                 for load_id in logical_loads:
                     load = cloud_data[house_id]["rooms"][room_id]["logical_loads"][load_id]
 
-                    sha.update(cloud_data[house_id]["token"].encode())
-                    token = sha.hexdigest()
-
                     self.loads[load_id] = {
                         "name": load["name"],
                         "token": token,
                         "lightpads": {}
                     }
 
-                    self.lightpads = {}
                     for lpid in load["lightpads"]:
                         if lpid in devices:
                             # reference it by logical load
