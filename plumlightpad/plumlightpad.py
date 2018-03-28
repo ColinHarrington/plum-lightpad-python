@@ -226,8 +226,8 @@ class Plum:
 
     def __collate_discoveries(self, cloud_data, devices):
         """Make a list of all logical loads from the cloud with only the lightpads found on the current network"""
-        self.lightpads = {}
         self.loads = {}
+        self.lightpads = {}
         sha = hashlib.new("sha256")
 
         for house_id in cloud_data:
