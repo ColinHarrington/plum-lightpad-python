@@ -11,19 +11,25 @@ import telnetlib
 import json
 import requests
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
+
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 from . import plumdiscovery
 from . import plumcloud
 
+
 class Plum:
     """Interact with Plum Lightpad devices"""
 
     def __init__(self, username, password):
-        self.local_devices = plumdiscovery.discover()
-        cloud_data = plumcloud.fetch_all_the_things(username, password)
-        self.__collate_discoveries(cloud_data, self.local_devices)
+        self.__username = username
+        self.__password = password
         self._subscribers = {}
+
+    async def discover(self):
+        self.local_devices = await plumdiscovery.discover()
+        self._cloud_data = plumcloud.fetch_all_the_things(self.__username, self.__password)
+        self.__collate_discoveries(self._cloud_data, self.local_devices)
 
     def get_logical_loads(self):
         return self.loads
@@ -145,7 +151,7 @@ class Plum:
 
             except IOError:
                 print('error')
-    
+
     def set_glow_timeout(self, lpid, timeout):
         if lpid in self.lightpads and timeout >= 0:
             try:
@@ -173,7 +179,7 @@ class Plum:
                 url = "https://%s:%s/v2/setLogicalLoadConfig" % (lightpad["ip"], lightpad["port"])
                 data = {
                     "config": {
-                        "glowIntensity": (float(intensity)/float(100))
+                        "glowIntensity": (float(intensity) / float(100))
                     },
                     "llid": llid
                 }
@@ -184,7 +190,7 @@ class Plum:
 
     def enable_glow(self, lpid):
         self.__enable_glow(lpid, True)
-    
+
     def disable_glow(self, lpid):
         self.__enable_glow(lpid, False)
 
@@ -281,4 +287,3 @@ class Plum:
 
             except IOError:
                 print('error')
-
