@@ -7,7 +7,8 @@ Published under the MIT license - See LICENSE file for more details.
 
 from socket import socket, timeout, AF_INET, SOCK_DGRAM, SOL_SOCKET, SO_REUSEADDR, SO_BROADCAST
 
-def discover():
+
+async def discover():
     """Broadcast a query on the network to find all Plum Lightpads"""
 
     devices = {}

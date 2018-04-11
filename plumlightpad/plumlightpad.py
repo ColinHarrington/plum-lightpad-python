@@ -11,19 +11,25 @@ import telnetlib
 import json
 import requests
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
+
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 from . import plumdiscovery
 from . import plumcloud
 
+
 class Plum:
     """Interact with Plum Lightpad devices"""
 
     def __init__(self, username, password):
-        self.local_devices = plumdiscovery.discover()
-        cloud_data = plumcloud.fetch_all_the_things(username, password)
-        self.__collate_discoveries(cloud_data, self.local_devices)
+        self.__username = username
+        self.__password = password
         self._subscribers = {}
+
+    async def discover(self):
+        self.local_devices = await plumdiscovery.discover()
+        self._cloud_data = plumcloud.fetch_all_the_things(self.__username, self.__password)
+        self.__collate_discoveries(self._cloud_data, self.local_devices)
 
     def get_logical_loads(self):
         return self.loads
@@ -123,7 +129,7 @@ class Plum:
         """Turn off a logical load"""
         self.set_logical_load_level(llid, 0)
 
-    def set_glow_color(self, lpid, r, g, b, w):
+    def set_lightpad_config(self, lpid, config):
         if lpid in self.lightpads:
             try:
                 lightpad = self.lightpads[lpid]
@@ -131,60 +137,39 @@ class Plum:
 
                 url = "https://%s:%s/v2/setLogicalLoadConfig" % (lightpad["ip"], lightpad["port"])
                 data = {
-                    "config": {
-                        "glowColor": {
-                            "red": r,
-                            "green": g,
-                            "blue": b,
-                            "white": w
-                        }
-                    },
+                    "config": config,
                     "llid": llid
                 }
                 response = self.__post(url, data, self.loads[llid]["token"])
+                print(response)
 
             except IOError:
                 print('error')
-    
+
+    def set_glow_color(self, lpid, r, g, b, w):
+        config = {
+            "glowColor": {
+                "red": r,
+                "green": g,
+                "blue": b,
+                "white": w
+            }
+        }
+        self.set_lightpad_config(lpid=lpid, config=config)
+
     def set_glow_timeout(self, lpid, timeout):
-        if lpid in self.lightpads and timeout >= 0:
-            try:
-                lightpad = self.lightpads[lpid]
-                llid = lightpad["logical_load_id"]
-
-                url = "https://%s:%s/v2/setLogicalLoadConfig" % (lightpad["ip"], lightpad["port"])
-                data = {
-                    "config": {
-                        "glowTimeout": timeout
-                    },
-                    "llid": llid
-                }
-                response = self.__post(url, data, self.loads[llid]["token"])
-
-            except IOError:
-                print('error')
+        if timeout >= 0:
+            config = {"glowTimeout": timeout}
+            self.set_lightpad_config(lpid=lpid, config=config)
 
     def set_glow_intensity(self, lpid, intensity):
-        if lpid in self.lightpads and intensity >= 0:
-            try:
-                lightpad = self.lightpads[lpid]
-                llid = lightpad["logical_load_id"]
-
-                url = "https://%s:%s/v2/setLogicalLoadConfig" % (lightpad["ip"], lightpad["port"])
-                data = {
-                    "config": {
-                        "glowIntensity": (float(intensity)/float(100))
-                    },
-                    "llid": llid
-                }
-                response = self.__post(url, data, self.loads[llid]["token"])
-
-            except IOError:
-                print('error')
+        if intensity >= 0:
+            config = {"glowIntensity": (float(intensity) / float(100))}
+            self.set_lightpad_config(lpid=lpid, config=config)
 
     def enable_glow(self, lpid):
         self.__enable_glow(lpid, True)
-    
+
     def disable_glow(self, lpid):
         self.__enable_glow(lpid, False)
 
@@ -281,4 +266,3 @@ class Plum:
 
             except IOError:
                 print('error')
-
