@@ -93,7 +93,7 @@ class Lightpad(object):
     @property
     def friendly_name(self):
         load = self.logical_load
-        return load.name + "_" + str(load.lightpads.index(self) + 1)
+        return load.name + " " + str(load.lightpads.index(self) + 1)
 
     @property
     def config(self):

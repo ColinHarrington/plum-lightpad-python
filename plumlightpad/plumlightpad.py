@@ -6,17 +6,20 @@ Published under the MIT license - See LICENSE file for more details.
 '''
 import asyncio
 import hashlib
+import socket
 import threading
 import telnetlib
 import json
 import requests
 
 # from plumlightpad.heartbeat import LightpadHeartbeatProtocol
+from plumlightpad.heartbeat import LightpadHeartbeatProtocol
 from plumlightpad.logicalload import LogicalLoad
 from plumlightpad.plumcloud import PlumCloud
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
 from plumlightpad.lightpad import Lightpad
+from plumlightpad.plumdiscovery import LocalDiscoveryProtocol
 
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
@@ -58,9 +61,43 @@ class Plum:
         for lightpad_listener in self.lightpad_listeners:
             lightpad_listener(lightpad)
 
+    def handle_heartbeat(self, src_addr, data):
+        print("HEARTBEAT:", src_addr, data)
+        info = data.decode("UTF-8").split(" ")
+        if len(info) >= 4:
+            lpid = info[2]
+
+            if lpid not in self.local_devices:
+                lightpad = {
+                    "lpid": info[2],
+                    "ip": src_addr[0],
+                    "port": info[3]
+                }
+                self.local_devices[lpid] = lightpad
+                asyncio.ensure_future(self.device_found(lightpad))
+
+
     async def discover(self):
-        asyncio.ensure_future(plumdiscovery.local_discovery(device_handler=self.device_found))
-        self._cloud.fetch_all_the_things()  # Cloud Discovery
+        loop = asyncio._get_running_loop()
+        # asyncio.ensure_future(plumdiscovery.local_discovery(device_handler=self.device_found))
+
+        # protocol = LocalDiscoveryProtocol(device_handler=self.device_found)
+        # coro1 = loop.create_datagram_endpoint(
+        #     lambda: protocol, local_addr=('0.0.0.0', 50000), reuse_address=True, allow_broadcast=True, family=socket.AF_INET)
+        # asyncio.ensure_future(coro1)
+
+        plumdiscovery.LocalDiscovery(loop=loop, device_handler=self.device_found).start()
+
+        protocol = LightpadHeartbeatProtocol(handler=self.handle_heartbeat)
+        coro = loop.create_datagram_endpoint(
+            lambda: protocol, local_addr=('0.0.0.0', 43770))
+        asyncio.ensure_future(coro)
+        # coroutine AbstractEventLoop.create_datagram_endpoint(
+        #       protocol_factory, local_addr=None, remote_addr=None, *, family=0,
+        #                                            proto=0, flags=0, reuse_address=None, reuse_port=None,
+        #                                            allow_broadcast=None, sock=None)
+        await self._cloud.fetch_all_the_things()  # Cloud Discovery
+        # await self._cloud.sync()
 
     def add_load_listener(self, callback):
         self.load_listeners.append(callback)
@@ -189,43 +226,6 @@ class Plum:
             "X-Plum-House-Access-Token": access_token
         }
         return requests.post(url, headers=headers, json=data, verify=False)
-
-    # def __collate_discoveries(self, cloud_data, devices):
-    #     """Make a list of all logical loads from the cloud with only the lightpads found on the current network"""
-    #     self.loads = {}
-    #     self.lightpads = {}
-    #     sha = hashlib.new("sha256")
-    #
-    #     for house_id in cloud_data:
-    #         rooms = cloud_data[house_id]["rooms"]
-    #
-    #         sha.update(cloud_data[house_id]["token"].encode())
-    #         token = sha.hexdigest()
-    #
-    #         for room_id in rooms:
-    #             logical_loads = cloud_data[house_id]["rooms"][room_id]["logical_loads"]
-    #
-    #             for load_id in logical_loads:
-    #                 load = cloud_data[house_id]["rooms"][room_id]["logical_loads"][load_id]
-    #
-    #                 self.loads[load_id] = {
-    #                     "name": load["name"],
-    #                     "token": token,
-    #                     "lightpads": {}
-    #                 }
-    #
-    #                 for lpid in load["lightpads"]:
-    #                     if lpid in devices:
-    #                         # reference it by logical load
-    #                         self.loads[load_id]["lightpads"][lpid] = load["lightpads"][lpid]
-    #                         self.loads[load_id]["lightpads"][lpid]["ip"] = devices[lpid]["ip"]
-    #                         self.loads[load_id]["lightpads"][lpid]["port"] = devices[lpid]["port"]
-    #
-    #                         # reference it by lightpad
-    #                         self.lightpads[lpid] = load["lightpads"][lpid]
-    #                         self.lightpads[lpid]["ip"] = devices[lpid]["ip"]
-    #                         self.lightpads[lpid]["port"] = devices[lpid]["port"]
-    #                         self.lightpads[lpid]["logical_load_id"] = load_id
 
     def __enable_glow(self, lpid, enable):
         if lpid in self.lightpads:
