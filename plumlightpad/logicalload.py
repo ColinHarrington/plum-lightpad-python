@@ -7,7 +7,6 @@ class LogicalLoad(object):
         self._data = data
         self._lightpads = []
         self._metrics = None
-        self.event_listeners = {}
 
     @property
     def llid(self):
@@ -79,7 +78,11 @@ class LogicalLoad(object):
 
     def turn_on(self, level=None):
         if level is None:
-            level = 255  # TODO handle default value?
+            if 'defaultLevel' in self.primaryLightpad.config:
+                level = self.primaryLightpad.config['defaultLevel']
+            else:
+                level = 255
+
         self.set_logical_load_level(level)
 
     def turn_off(self):
@@ -114,7 +117,5 @@ class LogicalLoad(object):
         }
         response = lightpad.post(url=url, data=data)
 
-        if response.status_code is 204:
-            return
-        else:
+        if response.status_code is not 204:
             print("Failed to setLogicalLoadLevel", data, response)

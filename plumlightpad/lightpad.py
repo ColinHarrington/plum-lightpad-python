@@ -13,23 +13,22 @@ class Lightpad(object):
         self._device = device
         self._data = data
         self._config = data['config']
-        self.config_change_listener = None
-        self.setup_tcp_listener()
         self._event_listeners = {}
 
-    def setup_tcp_listener(self):
-        self._tcp_tap = threading.Thread(target=self.__register_listener, args=(self.ip, self.__process_event))
-        self._tcp_tap.daemon = True
-        self._tcp_tap.start()
+        # start a new thread to listen for telnet events
+        self._telnet_thread = threading.Thread(target=self.__telnet_event_listener, args=(self.ip, self.__process_event))
+        self._telnet_thread.daemon = True
+        self._telnet_thread.start()
 
-    def __register_listener(self, ip, callback):
+    def __telnet_event_listener(self, ip, callback):
         """creates a telnet connection to the lightpad"""
 
         tn = telnetlib.Telnet(ip, 2708)
         self._last_event = ""
-        while True:
+        self._telnet_running = True
+        while self._telnet_running:
             try:
-                raw_string = tn.read_until(b'.\n', 60)
+                raw_string = tn.read_until(b'.\n', 5)
 
                 if len(raw_string) >= 2 and raw_string[-2:] == b'.\n':
                     # lightpad sends ".\n" at the end that we need to chop off
@@ -41,6 +40,7 @@ class Lightpad(object):
 
             except:
                 pass
+        tn.close()
 
     def __process_event(self, event):
         event['lpid'] = self.lpid
@@ -51,6 +51,11 @@ class Lightpad(object):
         if listeners is not None:
             for listener in listeners:
                 listener(event)
+
+
+    def close(self):
+        self._telnet_running = False
+        self._telnet_thread.join()
 
     def add_event_listener(self, event_type, listener):
         if event_type in self._event_listeners:
@@ -154,7 +159,7 @@ class Lightpad(object):
     def disable_glow(self):
         self.__enable_glow(False)
 
-    def enable_glow(self, enable):
+    def __enable_glow(self, enable):
         self.set_config({"glowEnabled": enable})
 
     def set_config(self, config):
