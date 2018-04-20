@@ -34,21 +34,20 @@ class PlumCloud():
 
     async def get_load_data(self, llid):
         while llid not in self.logical_loads:
-            await asyncio.sleep(0.1) #TODO change this to a wait with a timeout?
+            await asyncio.sleep(0.1)  # TODO change this to a wait with a timeout?
         return self.logical_loads[llid]
 
     async def get_lightpad_data(self, lpid):
         while lpid not in self.lightpads:
-            await asyncio.sleep(0.1) #TODO change this to a wait with a timeout?
+            await asyncio.sleep(0.1)  # TODO change this to a wait with a timeout?
         return self.lightpads[lpid]
 
     async def fetch_houses(self):
         """Lookup details for devices on the plum servers"""
         try:
-            url = "https://production.plum.technology/v2/getHouses"
-            async with aiohttp.ClientSession() as session:
-                response = await session.request('GET', url, headers=self.headers)
-                return await response.json()
+            async with aiohttp.ClientSession(headers=self.headers) as session:
+                async with session.get("https://production.plum.technology/v2/getHouses") as response:
+                    return await response.json()
 
         except IOError:
             print("Unable to login to Plum cloud servers.")
@@ -79,8 +78,8 @@ class PlumCloud():
         return await self.__post(url, data)
 
     async def __post(self, url, data):
-        async with aiohttp.ClientSession() as session:
-            response = await session.request('POST', url, data=json.dumps(data), headers=self.headers)
+        async with aiohttp.ClientSession(headers=self.headers, json_serialize=json.dumps) as session:
+            response = await session.post(url, json=data)
             return await response.json()
 
     async def update_houses(self):
@@ -91,48 +90,42 @@ class PlumCloud():
 
     async def update_house(self, house_id):
         house = await self.fetch_house(house_id)
-
         self.houses[house_id] = house
 
-    async def sync(self):  # TODO make this async
+        sha = hashlib.new("sha256")
+        sha.update(house["house_access_token"].encode())
+        house['access_token'] = sha.hexdigest()
+
+        for room_id in house['rids']:
+            asyncio.Task(self.update_room(room_id=room_id, house=house))
+
+    async def update_room(self, room_id, house):
+        room = await self.fetch_room(room_id)
+        room['house'] = house
+        self.rooms[room_id] = room
+        for llid in room["llids"]:
+            asyncio.Task(self.update_logical_load(llid=llid, house=house, room=room))
+
+    async def update_logical_load(self, llid, house, room):
+        logical_load = await self.fetch_logical_load(llid)
+        logical_load['room'] = room
+        self.logical_loads[llid] = logical_load
+        for lpid in logical_load['lpids']:
+            asyncio.Task(self.update_lightpad(lpid=lpid, house=house, room=room, logical_load=logical_load))
+
+    async def update_lightpad(self, lpid, house, room, logical_load):
+        lightpad = await self.fetch_lightpad(lpid)
+        lightpad['house'] = house
+        lightpad['room'] = room
+        lightpad['logical_load'] = logical_load
+        lightpad['access_token'] = house['access_token']
+        self.lightpads[lpid] = lightpad
+
+    async def update(self):  # TODO make this async
         """Fetch all info from cloud"""
-        async with aiohttp.ClientSession() as session:
-            self.__session = session
-            cloud_info = {}
-
-            print("starting Cloud Sync", datetime.utcnow())
-            tasks = []
-            houses = await self.fetch_houses()
-
-
-            # sha = hashlib.new("sha256")
-
-            for house in houses:
-                async def f_house(house):
-                    house_details = await self.fetch_house(house)
-                    print(house, house_details)
-                    cloud_info[house] = house_details
-                    async def f_room(room_id):
-                        room = await self.fetch_room(room_id)
-                        print(room)
-                        async def f_load(llid):
-                            logical_load = await self.fetch_logical_load(llid)
-                            print(logical_load)
-                            async def f_lightpad(lpid):
-                                lightpad = await self.fetch_lightpad(lpid)
-                                print(lightpad)
-                            for lpid in logical_load["lpids"]:
-                                tasks.append(asyncio.Task(f_lightpad(lpid)))
-                        for llid in room["llids"]:
-                            tasks.append(asyncio.Task(f_load(llid)))
-                    for room_id in house_details["rids"]:
-                        tasks.append(asyncio.Task(f_room(room_id)))
-                tasks.append(asyncio.Task(f_house(house)))
-            asyncio.gather(*tasks)
-            print("Finished Cloud Sync", datetime.utcnow())
-            self._cloud_info = cloud_info
-            return cloud_info
-
+        print("starting Cloud Sync", datetime.utcnow())
+        await self.update_houses()
+        print("Finished Cloud Sync", datetime.utcnow())
 
     async def fetch_all_the_things(self):  # TODO make this async
         """Fetch all info from cloud"""
@@ -148,7 +141,6 @@ class PlumCloud():
                 house_details = await self.fetch_house(house)
                 print(house, house_details)
                 cloud_info[house] = house_details
-
 
                 sha.update(house_details["house_access_token"].encode())
                 access_token = sha.hexdigest()

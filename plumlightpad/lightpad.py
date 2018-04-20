@@ -16,7 +16,8 @@ class Lightpad(object):
         self._event_listeners = {}
 
         # start a new thread to listen for telnet events
-        self._telnet_thread = threading.Thread(target=self.__telnet_event_listener, args=(self.ip, self.__process_event))
+        self._telnet_thread = threading.Thread(target=self.__telnet_event_listener,
+                                               args=(self.ip, self.__process_event))
         self._telnet_thread.daemon = True
         self._telnet_thread.start()
 
@@ -51,7 +52,6 @@ class Lightpad(object):
         if listeners is not None:
             for listener in listeners:
                 listener(event)
-
 
     def close(self):
         self._telnet_running = False

@@ -49,14 +49,14 @@ class Plum:
                 logical_load.add_lightpad(lightpad)
                 await logical_load.load_metrics()
                 for load_listener in self.load_listeners:
-                    load_listener(logical_load)  ## TODO event dispatch not on this thread?
+                    await load_listener(logical_load)
             else:
                 self.loads[llid].add_lightpad(lightpad)
 
             for lightpad_listener in self.lightpad_listeners:
-                lightpad_listener(lightpad)
+                await lightpad_listener(lightpad)
         else:
-            print("duplicate device found")
+            print("Already located device", device)
 
     async def discover(self, loop):
         print("Plum :: discover")
@@ -68,7 +68,7 @@ class Plum:
         asyncio.ensure_future(coro)
 
         await self._cloud.fetch_all_the_things()  # Cloud Discovery
-        # await self._cloud.sync()
+        # await self._cloud.update()
 
     def add_load_listener(self, callback):
         self.load_listeners.append(callback)
@@ -81,3 +81,7 @@ class Plum:
 
     def get_lightpads(self):
         return self.lightpads
+
+    def cleanup(self):
+        for lightpad in self.lightpads.values():
+            lightpad.close()
