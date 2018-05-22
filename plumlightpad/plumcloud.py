@@ -4,7 +4,6 @@ https://github.com/heathbar/plum-lightpad-python
 
 Published under the MIT license - See LICENSE file for more details.
 '''
-from datetime import datetime
 
 import aiohttp
 import asyncio
@@ -123,51 +122,47 @@ class PlumCloud():
 
     async def update(self):  # TODO make this async
         """Fetch all info from cloud"""
-        print("starting Cloud Sync", datetime.utcnow())
-        await self.update_houses()
-        print("Finished Cloud Sync", datetime.utcnow())
+        asyncio.Task(self.update_houses())
 
     async def fetch_all_the_things(self):  # TODO make this async
         """Fetch all info from cloud"""
-        async with aiohttp.ClientSession() as session:
-            self.__session = session
-            cloud_info = {}
+        cloud_info = {}
 
-            houses = self.fetch_houses()
+        houses = self.fetch_houses()
 
-            sha = hashlib.new("sha256")
+        sha = hashlib.new("sha256")
 
-            for house in await houses:
-                house_details = await self.fetch_house(house)
-                print(house, house_details)
-                cloud_info[house] = house_details
+        for house in await houses:
+            house_details = await self.fetch_house(house)
+            # print(house, house_details)
+            cloud_info[house] = house_details
 
-                sha.update(house_details["house_access_token"].encode())
-                access_token = sha.hexdigest()
+            sha.update(house_details["house_access_token"].encode())
+            access_token = sha.hexdigest()
 
-                house_details['rooms'] = {}
-                for room_id in house_details["rids"]:
-                    room = await self.fetch_room(room_id)
-                    print("Room:", room)
-                    cloud_info[house]["rooms"][room_id] = room
+            house_details['rooms'] = {}
+            for room_id in house_details["rids"]:
+                room = await self.fetch_room(room_id)
+                # print("Room:", room)
+                cloud_info[house]["rooms"][room_id] = room
 
-                    room['logical_loads'] = {}
-                    for llid in room["llids"]:
-                        logical_load = await self.fetch_logical_load(llid)
-                        self.logical_loads[llid] = logical_load
-                        self.logical_loads[llid]['room'] = room
-                        print("LogicalLoad:", logical_load)
-                        cloud_info[house]["rooms"][room_id]["logical_loads"][llid] = logical_load
+                room['logical_loads'] = {}
+                for llid in room["llids"]:
+                    logical_load = await self.fetch_logical_load(llid)
+                    self.logical_loads[llid] = logical_load
+                    self.logical_loads[llid]['room'] = room
+                    # print("LogicalLoad:", logical_load)
+                    cloud_info[house]["rooms"][room_id]["logical_loads"][llid] = logical_load
 
-                        logical_load['lightpads'] = {}
-                        for lpid in logical_load["lpids"]:
-                            lightpad = await self.fetch_lightpad(lpid)
-                            print("Lightpad:", lightpad)
-                            cloud_info[house]["rooms"][room_id]["logical_loads"][llid]["lightpads"][lpid] = lightpad
-                            self.lightpads[lpid] = lightpad
+                    logical_load['lightpads'] = {}
+                    for lpid in logical_load["lpids"]:
+                        lightpad = await self.fetch_lightpad(lpid)
+                        # print("Lightpad:", lightpad)
+                        cloud_info[house]["rooms"][room_id]["logical_loads"][llid]["lightpads"][lpid] = lightpad
+                        self.lightpads[lpid] = lightpad
 
-                            self.lightpads[lpid]['access_token'] = access_token
-                            self.lightpads[lpid]['house'] = house_details
+                        self.lightpads[lpid]['access_token'] = access_token
+                        self.lightpads[lpid]['house'] = house_details
 
             self._cloud_info = cloud_info
             return cloud_info

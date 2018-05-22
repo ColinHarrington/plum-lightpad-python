@@ -24,16 +24,13 @@ class LocalDiscoveryProtocol(asyncio.DatagramProtocol):
 
     def broadcast(self):
         if self.broadcast_count < 2:
-            print('Lightpad Broadcast')
             self.transport.sendto("PLUM".encode("UTF-8"), ("255.255.255.255", 43770))
             self.broadcast_count += 1
             self.__loop.call_later(15, self.broadcast)
 
     def datagram_received(self, data, addr):
-        print(addr, data)
         matches = self.regex.match(data.decode("UTF-8"))
         if matches is not None:
             lightpad = matches.groupdict()
             lightpad.update({'ip': addr[0]})
-            print(lightpad)
             asyncio.ensure_future(self.__handler(lightpad), loop=self.__loop)

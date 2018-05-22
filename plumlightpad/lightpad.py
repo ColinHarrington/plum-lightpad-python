@@ -1,10 +1,12 @@
 import datetime
 import json
+import logging
 import telnetlib
 import threading
 
 import requests
 
+_LOGGER = logging.getLogger('plumlightpad')
 
 class Lightpad(object):
 
@@ -46,7 +48,7 @@ class Lightpad(object):
     def __process_event(self, event):
         event['lpid'] = self.lpid
         event['date'] = datetime.datetime.now()
-        print(event)
+        _LOGGER.debug(event)
         event_type = event['type']
         listeners = self._event_listeners[event_type]
         if listeners is not None:

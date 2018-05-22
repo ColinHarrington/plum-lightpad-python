@@ -5,6 +5,8 @@ https://github.com/heathbar/plum-lightpad-python
 Published under the MIT license - See LICENSE file for more details.
 '''
 import asyncio
+import logging
+
 import requests
 
 from plumlightpad.logicalload import LogicalLoad
@@ -19,6 +21,7 @@ requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 from . import plumdiscovery
 from . import plumcloud
 
+_LOGGER = logging.getLogger('plumlightpad')
 
 class Plum:
     """Interact with Plum Lightpad devices"""
@@ -32,7 +35,7 @@ class Plum:
         self.lightpad_listeners = []
 
     async def device_found(self, device):
-        print("device_found:", device)
+        _LOGGER.debug("device_found: %s", device)
         lpid = device['lpid']
         if lpid not in self.local_devices:
             self.local_devices[lpid] = device
@@ -56,10 +59,10 @@ class Plum:
             for lightpad_listener in self.lightpad_listeners:
                 await lightpad_listener(lightpad)
         else:
-            print("Already located device", device)
+            _LOGGER.debug("Already located device", device)
 
     async def discover(self, loop):
-        print("Plum :: discover")
+        _LOGGER.debug("Plum :: discover")
 
         protocol = LocalDiscoveryProtocol(handler=self.device_found, loop=loop)
 
@@ -67,8 +70,8 @@ class Plum:
             lambda: protocol, local_addr=('0.0.0.0', 43770), allow_broadcast=True, reuse_port=True)
         asyncio.ensure_future(coro)
 
-        await self._cloud.fetch_all_the_things()  # Cloud Discovery
-        # await self._cloud.update()
+        # await self._cloud.fetch_all_the_things()  # Cloud Discovery
+        await self._cloud.update()
 
     def add_load_listener(self, callback):
         self.load_listeners.append(callback)
