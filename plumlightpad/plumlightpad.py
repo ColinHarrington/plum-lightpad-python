@@ -70,7 +70,6 @@ class Plum:
             lambda: protocol, local_addr=('0.0.0.0', 43770), allow_broadcast=True, reuse_port=True)
         asyncio.ensure_future(coro)
 
-        # await self._cloud.fetch_all_the_things()  # Cloud Discovery
         await self._cloud.update()
 
     def add_load_listener(self, callback):

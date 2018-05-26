@@ -27,10 +27,6 @@ class PlumCloud():
         self.logical_loads = {}
         self.lightpads = {}
 
-    @property
-    def data(self):
-        return self._cloud_info
-
     async def get_load_data(self, llid):
         while llid not in self.logical_loads:
             await asyncio.sleep(0.1)  # TODO change this to a wait with a timeout?
@@ -123,46 +119,3 @@ class PlumCloud():
     async def update(self):  # TODO make this async
         """Fetch all info from cloud"""
         asyncio.Task(self.update_houses())
-
-    async def fetch_all_the_things(self):  # TODO make this async
-        """Fetch all info from cloud"""
-        cloud_info = {}
-
-        houses = self.fetch_houses()
-
-        sha = hashlib.new("sha256")
-
-        for house in await houses:
-            house_details = await self.fetch_house(house)
-            # print(house, house_details)
-            cloud_info[house] = house_details
-
-            sha.update(house_details["house_access_token"].encode())
-            access_token = sha.hexdigest()
-
-            house_details['rooms'] = {}
-            for room_id in house_details["rids"]:
-                room = await self.fetch_room(room_id)
-                # print("Room:", room)
-                cloud_info[house]["rooms"][room_id] = room
-
-                room['logical_loads'] = {}
-                for llid in room["llids"]:
-                    logical_load = await self.fetch_logical_load(llid)
-                    self.logical_loads[llid] = logical_load
-                    self.logical_loads[llid]['room'] = room
-                    # print("LogicalLoad:", logical_load)
-                    cloud_info[house]["rooms"][room_id]["logical_loads"][llid] = logical_load
-
-                    logical_load['lightpads'] = {}
-                    for lpid in logical_load["lpids"]:
-                        lightpad = await self.fetch_lightpad(lpid)
-                        # print("Lightpad:", lightpad)
-                        cloud_info[house]["rooms"][room_id]["logical_loads"][llid]["lightpads"][lpid] = lightpad
-                        self.lightpads[lpid] = lightpad
-
-                        self.lightpads[lpid]['access_token'] = access_token
-                        self.lightpads[lpid]['house'] = house_details
-
-            self._cloud_info = cloud_info
-            return cloud_info
