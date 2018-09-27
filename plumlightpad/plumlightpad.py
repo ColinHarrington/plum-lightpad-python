@@ -7,19 +7,10 @@ Published under the MIT license - See LICENSE file for more details.
 import asyncio
 import logging
 
-import requests
-
 from plumlightpad.logicalload import LogicalLoad
 from plumlightpad.plumcloud import PlumCloud
-from requests.packages.urllib3.exceptions import InsecureRequestWarning
-
 from plumlightpad.lightpad import Lightpad
 from plumlightpad.plumdiscovery import LocalDiscoveryProtocol
-
-requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
-
-from . import plumdiscovery
-from . import plumcloud
 
 _LOGGER = logging.getLogger('plumlightpad')
 
@@ -52,25 +43,30 @@ class Plum:
                 logical_load.add_lightpad(lightpad)
                 await logical_load.load_metrics()
                 for load_listener in self.load_listeners:
-                    await load_listener(logical_load)
+                    await load_listener({'llid': llid})
             else:
                 self.loads[llid].add_lightpad(lightpad)
 
             for lightpad_listener in self.lightpad_listeners:
-                await lightpad_listener(lightpad)
+                await lightpad_listener({'lpid': lpid})
         else:
             _LOGGER.debug("Already located device", device)
 
-    async def discover(self, loop):
+    async def loadCloudData(self):
+        await self._cloud.update()
+
+    async def discover(self, loop, loadListener=None, lightpadListener=None):
         _LOGGER.debug("Plum :: discover")
+        if loadListener:
+            self.load_listeners.append(loadListener)
+        if lightpadListener:
+            self.lightpad_listeners.append(lightpadListener)
 
         protocol = LocalDiscoveryProtocol(handler=self.device_found, loop=loop)
 
         coro = loop.create_datagram_endpoint(
             lambda: protocol, local_addr=('0.0.0.0', 43770), allow_broadcast=True, reuse_port=True)
         asyncio.ensure_future(coro)
-
-        await self._cloud.update()
 
     def add_load_listener(self, callback):
         self.load_listeners.append(callback)
@@ -81,8 +77,14 @@ class Plum:
     def get_logical_loads(self):
         return self.loads
 
+    def get_load(self, llid):
+        return self.loads[llid]
+
     def get_lightpads(self):
         return self.lightpads
+
+    def get_lightpad(self, lpid):
+        return self.lightpads[lpid]
 
     def cleanup(self):
         for lightpad in self.lightpads.values():
