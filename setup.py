@@ -4,7 +4,7 @@ PACKAGE_NAME = 'plumlightpad'
 
 setup(
     name = PACKAGE_NAME,
-    version = "0.0.9",
+    version = "0.0.10",
     author = "Heath Paddock",
     author_email = "hp@heathpaddock.com",
     description = ("A python package that interacts with the Plum Lightpad"),
