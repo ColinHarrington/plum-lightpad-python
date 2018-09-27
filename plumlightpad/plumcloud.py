@@ -105,8 +105,9 @@ class PlumCloud():
         logical_load = await self.fetch_logical_load(llid)
         logical_load['room'] = room
         self.logical_loads[llid] = logical_load
-        for lpid in logical_load['lpids']:
-            asyncio.Task(self.update_lightpad(lpid=lpid, house=house, room=room, logical_load=logical_load))
+        await asyncio.gather(
+            *[self.update_lightpad(lpid=lpid, house=house, room=room, logical_load=logical_load) for lpid in
+              logical_load['lpids']])
 
     async def update_lightpad(self, lpid, house, room, logical_load):
         lightpad = await self.fetch_lightpad(lpid)
@@ -118,4 +119,4 @@ class PlumCloud():
 
     async def update(self):  # TODO make this async
         """Fetch all info from cloud"""
-        asyncio.Task(self.update_houses())
+        await self.update_houses()
