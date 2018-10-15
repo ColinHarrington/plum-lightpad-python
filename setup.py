@@ -4,7 +4,7 @@ PACKAGE_NAME = 'plumlightpad'
 
 setup(
     name = PACKAGE_NAME,
-    version = "0.0.10",
+    version = "0.0.11",
     author = "Heath Paddock",
     author_email = "hp@heathpaddock.com",
     description = ("A python package that interacts with the Plum Lightpad"),
@@ -15,7 +15,7 @@ setup(
     include_package_data = True,
     classifiers = [
         'Intended Audience :: Developers',
-        "Development Status :: 3 - Alpha",
+        "Development Status :: 4 - Beta",
         "Topic :: Home Automation",
         'Operating System :: OS Independent',
         'Programming Language :: Python :: 3.4',

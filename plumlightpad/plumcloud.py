@@ -5,10 +5,8 @@ https://github.com/heathbar/plum-lightpad-python
 Published under the MIT license - See LICENSE file for more details.
 '''
 
-import aiohttp
 import asyncio
 import hashlib
-import json
 import sys
 import base64
 
@@ -40,9 +38,8 @@ class PlumCloud():
     async def fetch_houses(self):
         """Lookup details for devices on the plum servers"""
         try:
-            async with aiohttp.ClientSession(headers=self.headers) as session:
-                async with session.get("https://production.plum.technology/v2/getHouses") as response:
-                    return await response.json()
+            async with self._websession.get("https://production.plum.technology/v2/getHouses", headers=self.headers) as response:
+                return await response.json()
 
         except IOError:
             print("Unable to login to Plum cloud servers.")
@@ -73,9 +70,8 @@ class PlumCloud():
         return await self.__post(url, data)
 
     async def __post(self, url, data):
-        async with aiohttp.ClientSession(headers=self.headers, json_serialize=json.dumps) as session:
-            response = await session.post(url, json=data)
-            return await response.json()
+        response = await self._websession.post(url, headers=self.headers, json=data)
+        return await response.json()
 
     async def update_houses(self):
         """Lookup details for devices on the plum servers"""
@@ -117,6 +113,7 @@ class PlumCloud():
         lightpad['access_token'] = house['access_token']
         self.lightpads[lpid] = lightpad
 
-    async def update(self):  # TODO make this async
+    async def update(self, websession):
+        self._websession = websession
         """Fetch all info from cloud"""
         await self.update_houses()
