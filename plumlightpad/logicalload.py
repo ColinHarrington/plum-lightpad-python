@@ -1,6 +1,3 @@
-import requests
-
-
 class LogicalLoad(object):
     def __init__(self, data):
         """Initialize the light."""
@@ -76,17 +73,17 @@ class LogicalLoad(object):
             if metric['lpid'] == lpid:
                 metric['level'] = level
 
-    def turn_on(self, level=None):
+    async def turn_on(self, level=None):
         if level is None:
             if 'defaultLevel' in self.primaryLightpad.config:
                 level = self.primaryLightpad.config['defaultLevel']
             else:
                 level = 255
 
-        self.set_logical_load_level(level)
+        await self.set_logical_load_level(level)
 
-    def turn_off(self):
-        self.set_logical_load_level(0)
+    async def turn_off(self):
+        await self.set_logical_load_level(0)
 
     async def load_metrics(self):
         try:
@@ -95,10 +92,10 @@ class LogicalLoad(object):
             data = {
                 "llid": self.llid
             }
-            response = lightpad.post(url, data)
+            response = await lightpad.post_async(url, data)
 
-            if response.status_code is 200:
-                metrics = response.json()
+            if response.status is 200:
+                metrics = await response.json(content_type=None)
                 metrics['level'] = max(map(lambda l: l['level'], metrics['lightpad_metrics']))
                 self._metrics = metrics
                 return metrics
@@ -108,14 +105,14 @@ class LogicalLoad(object):
         except IOError:
             print('error')
 
-    def set_logical_load_level(self, level):
+    async def set_logical_load_level(self, level):
         lightpad = self.primaryLightpad
         url = "https://%s:%s/v2/setLogicalLoadLevel" % (lightpad.ip, lightpad.port)
         data = {
             "level": level,
             "llid": self.llid
         }
-        response = lightpad.post(url=url, data=data)
+        response = await lightpad.post_async(url=url, data=data)
 
-        if response.status_code is not 204:
-            print("Failed to setLogicalLoadLevel", data, response)
+        return True if response.status is 204 else False
+

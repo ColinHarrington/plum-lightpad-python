@@ -14,6 +14,7 @@ from plumlightpad.plumdiscovery import LocalDiscoveryProtocol
 
 _LOGGER = logging.getLogger('plumlightpad')
 
+
 class Plum:
     """Interact with Plum Lightpad devices"""
 
@@ -31,7 +32,7 @@ class Plum:
         if lpid not in self.local_devices:
             self.local_devices[lpid] = device
             data = await self._cloud.get_lightpad_data(lpid)
-            lightpad = Lightpad(device=device, data=data)
+            lightpad = Lightpad(device=device, data=data, websession=self._websession)
 
             self.lightpads[lpid] = lightpad
 
@@ -52,15 +53,16 @@ class Plum:
         else:
             _LOGGER.debug("Already located device", device)
 
-    async def loadCloudData(self):
-        await self._cloud.update()
+    async def loadCloudData(self, websession):
+        await self._cloud.update(websession)
 
-    async def discover(self, loop, loadListener=None, lightpadListener=None):
+    async def discover(self, loop, loadListener=None, lightpadListener=None, websession=None):
         _LOGGER.debug("Plum :: discover")
         if loadListener:
             self.load_listeners.append(loadListener)
         if lightpadListener:
             self.lightpad_listeners.append(lightpadListener)
+        self._websession = websession
 
         protocol = LocalDiscoveryProtocol(handler=self.device_found, loop=loop)
 

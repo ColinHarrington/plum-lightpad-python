@@ -10,8 +10,9 @@ _LOGGER = logging.getLogger('plumlightpad')
 
 class Lightpad(object):
 
-    def __init__(self, device, data):
+    def __init__(self, device, data, websession):
         """Initialize the light."""
+        self._websession = websession
         self._device = device
         self._data = data
         self._config = data['config']
@@ -134,7 +135,7 @@ class Lightpad(object):
     def glow_tracks_dimmer(self):
         return self._config['glowTracksDimmer']
 
-    def set_glow_color(self, r, g, b, w):
+    async def set_glow_color(self, r, g, b, w):
         config = {
             "glowColor": {
                 "red": r,
@@ -143,46 +144,45 @@ class Lightpad(object):
                 "white": w
             }
         }
-        self.set_config(config=config)
+        return await self.async_set_config(config=config)
 
-    def set_glow_timeout(self, timeout):
+    async def set_glow_timeout(self, timeout):
         if timeout >= 0:
             config = {"glowTimeout": timeout}
-            self.set_config(config=config)
+            await self.async_set_config(config=config)
 
-    def set_glow_intensity(self, intensity):
+    async def set_glow_intensity(self, intensity):
         if intensity >= 0:
             config = {"glowIntensity": (float(intensity) / float(100))}
-            self.set_config(config=config)
+            await self.async_set_config(config=config)
 
-    def enable_glow(self):
-        self.__enable_glow(True)
+    async def enable_glow(self):
+        await self.__enable_glow(True)
 
-    def disable_glow(self):
-        self.__enable_glow(False)
+    async def disable_glow(self):
+        await self.__enable_glow(False)
 
-    def __enable_glow(self, enable):
-        self.set_config({"glowEnabled": enable})
+    async def __enable_glow(self, enable):
+        await self.async_set_config({"glowEnabled": enable})
 
-    def set_config(self, config):
-        try:
+    async def set_config(self, config):
+        llid = self.llid
 
-            llid = self.llid
+        url = "https://%s:%s/v2/setLogicalLoadConfig" % (self.ip, self.port)
+        data = {
+            "config": config,
+            "llid": llid
+        }
+        response = await self.post_async(url, data)
 
-            url = "https://%s:%s/v2/setLogicalLoadConfig" % (self.ip, self.port)
-            data = {
-                "config": config,
-                "llid": llid
-            }
-            response = self.post(url, data)
+        _LOGGER.debug(response)
 
-            print(response)
+        if response.status is 204:
+            return True
+        else:
+            _LOGGER.error("Failed to setLogicalLoadConfig", data, response)
+            return False
 
-            if response.status_code is not 204:
-                print("Failed to setLogicalLoadConfig", data, response)
-
-        except IOError:
-            print('error')
 
     def post(self, url, data):
 
@@ -191,3 +191,11 @@ class Lightpad(object):
             "X-Plum-House-Access-Token": self.access_token
         }
         return requests.post(url, headers=headers, json=data, verify=False)
+
+    async def post_async(self, url, data):
+        headers = {
+            "User-Agent": "Plum/2.3.0 (iPhone; iOS 9.2.1; Scale/2.00)",
+            "X-Plum-House-Access-Token": self.access_token
+        }
+        return await self._websession.post(url, headers=headers, json=data)
+
