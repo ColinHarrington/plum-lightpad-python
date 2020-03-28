@@ -35,7 +35,7 @@ class LogicalLoad(object):
 
     @property
     def dimmable(self):
-        return bool(self.primaryLightpad.glow_enabled)
+        return bool(self.primaryLightpad.config['dimEnabled'])
 
     @property
     def level(self):
