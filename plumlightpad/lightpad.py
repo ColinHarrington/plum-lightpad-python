@@ -144,17 +144,17 @@ class Lightpad(object):
                 "white": w
             }
         }
-        return await self.async_set_config(config=config)
+        return await self.set_config(config=config)
 
     async def set_glow_timeout(self, timeout):
         if timeout >= 0:
             config = {"glowTimeout": timeout}
-            await self.async_set_config(config=config)
+            await self.set_config(config=config)
 
     async def set_glow_intensity(self, intensity):
         if intensity >= 0:
             config = {"glowIntensity": (float(intensity) / float(100))}
-            await self.async_set_config(config=config)
+            await self.set_config(config=config)
 
     async def enable_glow(self):
         await self.__enable_glow(True)
@@ -163,7 +163,7 @@ class Lightpad(object):
         await self.__enable_glow(False)
 
     async def __enable_glow(self, enable):
-        await self.async_set_config({"glowEnabled": enable})
+        await self.set_config({"glowEnabled": enable})
 
     async def set_config(self, config):
         llid = self.llid
